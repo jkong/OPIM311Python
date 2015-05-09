@@ -4,7 +4,7 @@ import numpy as np
 import re
 
 babyCSV = 'BabyNames.csv'
-forbesCSV = 'ForbesRankings.csv'
+forbesCSV = 'ForbesRankings2.csv'
 googleCSV = 'GoogleTrends.csv'
 
 class Analysis:
@@ -78,20 +78,35 @@ class Analysis:
 			itemYear = int(self.forbesRankingsListRaw[x][0])
 			itemRank = -1 * int(self.forbesRankingsListRaw[x][1])
 			itemName = self.forbesRankingsListRaw[x][2]
-			itemName = re.sub('[^a-zA-Z]+', ' ', itemName)
-			itemName = itemName.split()[0]
-			if itemYear in retDict.keys():
-				retDict.get(itemYear)[itemName] = itemRank
+			if len(itemName) > 0:
+				itemName = re.sub('[^a-zA-Z]+', ' ', itemName)
+				itemName = itemName.split()[0]
+				if itemYear in retDict.keys():
+					retDict.get(itemYear)[itemName] = itemRank
 		return retDict
 	
 	def formatForbesDiffDicts(self):
 		retDict = {}
-		forbesDict = formatForbesDict()
+		forbesDict = self.formatForbesDicts()
 		for year in list(range(2000, 2014)):
 			retDict[year] = {}
-			for x in forbesDict.keys():
+			for name in forbesDict.get(year).keys():
 				oldYear = year - 1
-				rankChange = (forbesDict.get(year)).get(x) - (forbesDict.get(oldYear)).get(x)
+				if name in forbesDict.get(oldYear):
+					rankChange = (forbesDict.get(year)).get(name) - (forbesDict.get(oldYear)).get(name)
+					retDict.get(year)[name] = rankChange
+		return retDict
+
+	def formatBabyPercentagesDiffDicts(self):
+		retDict = {}
+		babyDict = self.formatBabyPercentageDicts()
+		for year in list(range(2000, 2014)):
+			retDict[year] = {}
+			for name in babyDict.get(year).keys():
+				oldYear = year - 1
+				if name in babyDict.get(oldYear):
+					rankChange = (babyDict.get(year)).get(name) - (babyDict.get(oldYear)).get(name)
+					retDict.get(year)[name] = rankChange
 		return retDict
 
 	def formatBabyPercentageDiffDicts(self):
@@ -120,11 +135,16 @@ def main():
 	x = Analysis(babyCSV, forbesCSV, googleCSV)
 	rawBaby = x.formatBabyPercentageDicts()
 	rawForbes = x.formatForbesDicts()
+
+	forbesDiff = x.formatForbesDiffDicts()
+	babyDiff = x.formatBabyPercentagesDiffDicts()
+
 	for year in range(2002, 2014):
-		nameList, forbesRank, babyPercentage = x.listAnalysis(year, rawForbes, rawBaby)
+		nameList, forbesRank, babyPercentage = x.listAnalysis(year, forbesDiff, babyDiff)
 		slope, intercept, r_value, p_value, std_err = stats.linregress(forbesRank, babyPercentage)
 		print(str(year) + ": " + str(r_value))
-	# print(x.rawListAnalysis(2002))
+	print(forbesDiff.get(2005))
+	print(x.listAnalysis(2005, forbesDiff, babyDiff))
 	# for i in range(len(babyList)):
 	# 	slope, intercept, r_value, p_value, std_err = stats.linregress(forbesList[i], babyList[i])
 
