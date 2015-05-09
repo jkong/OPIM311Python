@@ -2,6 +2,7 @@ import csv
 from scipy import stats
 import numpy as np
 import re
+import matplotlib.pyplot as plt
 
 babyCSV = 'BabyNames.csv'
 forbesCSV = 'ForbesRankings2.csv'
@@ -64,8 +65,10 @@ class Analysis:
 			itemGirlPercentage = float(itemGirlPercentage)
 			itemGirlName = self.babyNamesListRaw[x][4]
 			if itemYear in retDict.keys():
-				retDict.get(itemYear)[itemBoyName] = itemBoyPercentage
-				retDict.get(itemYear)[itemGirlName] = itemGirlPercentage
+				if retDict.get(itemYear).get(itemBoyName) is None or retDict.get(itemYear).get(itemBoyName) < itemBoyPercentage:
+					retDict.get(itemYear)[itemBoyName] = itemBoyPercentage
+				if retDict.get(itemYear).get(itemGirlName) is None or retDict.get(itemYear).get(itemGirlName) < itemGirlPercentage:
+					retDict.get(itemYear)[itemGirlName] = itemGirlPercentage
 		return retDict
 
 	def formatForbesDicts(self):
@@ -109,10 +112,6 @@ class Analysis:
 					retDict.get(year)[name] = rankChange
 		return retDict
 
-	def formatBabyPercentageDiffDicts(self):
-		retDict = {}
-		return retDict
-
 	def listAnalysis(self, year, aForbesDict, aBabyDict):
 		forbesRank = []
 		babyPercentage = []
@@ -126,7 +125,41 @@ class Analysis:
 				babyPercentage.append((babyDict.get(year)).get(name))
 		return (nameList, np.array(forbesRank), np.array(babyPercentage))
 
-	# def diffListAnalysis(self, year):
+	def newUsersAnalysis(self, aForbesDict, aBabyDict):
+		retList = []
+		oldDiffList = []
+		newDiffList = []
+		babyDiff = self.formatBabyPercentagesDiffDicts()
+		counterNew = 0
+		counterOld = 0
+		sumNew = 0
+		sumOld = 0
+		for year in list(range(2000, 2014)):
+			for name in aForbesDict.get(year).keys():
+				if name not in aForbesDict.get(year-1).keys():
+					diff = babyDiff.get(year).get(name)
+					if diff is not None:
+						retList.append((name, diff))
+						sumNew += diff
+						counterNew += 1
+						oldDiffList.append(diff)
+						if diff > 0.025:
+							print((name, year, diff))
+				else:
+					diff = babyDiff.get(year).get(name)
+					if diff is not None:
+						retList.append((name, diff))
+						sumOld += diff
+						newDiffList.append(diff)
+						counterOld += 1
+
+		
+		# print((sumNew, sumOld, counterNew, counterOld))
+		if counterNew is not 0:
+			print("New average: " + str(sumNew / counterNew))
+		if counterOld is not 0:
+			print("Old average: " + str(sumOld / counterOld))
+		return (retList, np.array(oldDiffList), np.array(newDiffList))
 
 # year, rank, name category
 # print googleTrendsList
@@ -139,12 +172,24 @@ def main():
 	forbesDiff = x.formatForbesDiffDicts()
 	babyDiff = x.formatBabyPercentagesDiffDicts()
 
+	rlist = []
+	rlist2 = []
 	for year in range(2002, 2014):
-		nameList, forbesRank, babyPercentage = x.listAnalysis(year, forbesDiff, babyDiff)
+		nameList, forbesRank, babyPercentage = x.listAnalysis(year, rawForbes, rawBaby)
 		slope, intercept, r_value, p_value, std_err = stats.linregress(forbesRank, babyPercentage)
-		print(str(year) + ": " + str(r_value))
-	print(forbesDiff.get(2005))
-	print(x.listAnalysis(2005, forbesDiff, babyDiff))
+		# print(str(year) + ": " + str(r_value))
+		rlist.append(r_value)
+		slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(forbesRank, babyPercentage)
+		# print(str(year) + ": " + str(r_value))
+		rlist2.append(r_value2)
+	plt.plot(range(2002,2014), rlist)
+	plt.show()
+	
+	retList, oldDiffList, newDiffList = x.newUsersAnalysis(rawForbes, rawBaby)
+	print(stats.ttest_ind(oldDiffList, newDiffList))
+
+	# print(forbesDiff.get(2005))
+	# print(x.listAnalysis(2005, forbesDiff, babyDiff))
 	# for i in range(len(babyList)):
 	# 	slope, intercept, r_value, p_value, std_err = stats.linregress(forbesList[i], babyList[i])
 
